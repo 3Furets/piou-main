@@ -1,0 +1,35 @@
+import { chromium } from 'playwright';
+import { loadEnv, writeJSONEnc } from './secure/vault.js';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import readline from 'readline';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+
+async function main() {
+  const env = await loadEnv(path.join(__dirname, '.env'));
+  for (const [k,v] of Object.entries(env)) process.env[k] = v;
+
+  const XIMI_URL    = process.env.XIMI_URL || 'https://app.ximi.xelya.io/Ximi2/';
+  const SESSION_OUT = path.join(__dirname, 'ximi-session.json.enc');
+
+  console.log('Ouverture navigateur -> connecte-toi a Ximi');
+  console.log('URL :', XIMI_URL);
+
+  const browser = await chromium.launch({ headless: false });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page    = await context.newPage();
+  await page.goto(XIMI_URL);
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  await new Promise(resolve => rl.question('\nConnecte-toi dans le navigateur puis appuie sur ENTREE...', () => { rl.close(); resolve(); }));
+
+  const state = await context.storageState();
+  await writeJSONEnc(SESSION_OUT, state);
+  console.log('Session sauvegardee : ' + SESSION_OUT);
+  console.log('Cookies : ' + state.cookies.length);
+  await browser.close();
+}
+
+main().catch(e => { console.error('ERREUR:', e.message); process.exit(1); });

@@ -1,0 +1,5 @@
+﻿.env
+*.enc
+ximi-session*
+node_modules/
+ximi-assistant/rapports/
